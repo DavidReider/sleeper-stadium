@@ -2,7 +2,12 @@
 <html lang="en">
 <head>
   <script>window.__bubbleUp = function () { return ['nudge', 'tip', 'live-tip', 'a2hs', 'drill-tease', 'recap-ready'].some(function (i) { var e = document.getElementById(i); return !!e && !e.hidden && e.getClientRects().length > 0; }); };</script>
-  <script>window.__PASSES={"1313348860042571776":{"code":"P0","blimp":"","looks":"","gold":"","extras":["tanking","trade-addicts","cancun"]},"1378121024721158144":{"code":"P1","blimp":"","looks":"","gold":"","extras":[]}};window.__pass=window.__PASSES[new URLSearchParams(location.search).get('league')]||null;</script>
+<script>
+  // Your Sleeper league ID (the long number in your league's Sleeper URL), or "espn-<id>" for a public ESPN league.
+  window.__LEAGUE_ID = '1339704765872869376';
+  // Optional customizations: blimp text (60 chars), mascots/looks, golden jersey, league in-jokes. Empty = defaults.
+  window.__pass = { code: '', blimp: '', looks: '', gold: '', extras: [] };
+</script>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>Sleeper Stadium</title>
@@ -12,8 +17,8 @@
   <script>window.__players = fetch('sleeper-players.json').then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); });</script>
   <meta name="description" content="Your Sleeper fantasy league as a live pixel stadium.">
   <meta property="og:title" content="Sleeper Stadium">
-  <meta property="og:image" content="https://stadium.lamaisonwebstudio.com/og.png">
-  <meta property="og:url" content="https://stadium.lamaisonwebstudio.com/">
+  <meta property="og:image" content="https://stadium.djreider.com/og.png">
+  <meta property="og:url" content="https://stadium.djreider.com/">
   <meta name="twitter:card" content="summary_large_image">
   <meta property="og:description" content="Your Sleeper fantasy league as a live pixel stadium: live scores, touchdown alerts, the top scorer in the spotlight, the ASS Bowl and the bench of shame.">
   <link rel="icon" href="assets/icon-192.png">
@@ -31,76 +36,6 @@
   </style>
   <link rel="stylesheet" href="village.css">
   <link rel="stylesheet" href="stadium.css">
-<script>
-(function () {
-  if (!/[?&]sample=1/.test(location.search)) return;
-  var real = window.fetch.bind(window);
-  window.fetch = function (u, o) {
-    var url = typeof u === 'string' ? u : (u && u.url) || '';
-    if (!/api\.sleeper\.(app|com)\//.test(url)) return real(u, o);
-    var key = url.replace(/^https?:\/\//, '').replace(/[^a-z0-9]+/gi, '_').slice(0, 150) + '.json';
-    return real('sample/' + key).then(function (r) { return r.ok ? r : new Response('[]', { headers: { 'Content-Type': 'application/json' } }); });
-  };
-  // Oct 23 2026 (demo review: no way from the sample to MY league; sharing a made-up league is a dead end): in the sample
-  // the Share button becomes "Load MY league" and goes back to the box
-  // Oct 23 2026 (round 2): open on a team (Bench Warmers, roster 2: the closest game) so the top bar shows a live matchup,
-  // and ~5 s in, Bench Warmers score a touchdown (+6.6, flips the game) so the banner, the crowd and the count-up play once
-  try { if (!localStorage.getItem('st-me-1')) localStorage.setItem('st-me-1', '2'); } catch (x) {}
-  var tdAt = Date.now() + 5000; var tdDone = false;
-  var bump = function (t, live) { t.points = Math.round(((t.points || 0) + 6.6) * 100) / 100; if (live) t.proj = (t.proj || 0) + 6.6; var sp = t.starters_points || []; if (sp.length) sp[1] = Math.round(((sp[1] || 0) + 6.6) * 100) / 100; };
-  var realFetch = window.fetch;
-  window.fetch = function (u, o) {
-    var url = typeof u === 'string' ? u : (u && u.url) || '';
-    if (!/\/league\/1\/matchups\/\d+$/.test(url) || !tdDone || !window.__league || !url.endsWith('/matchups/' + window.__league.week)) return realFetch(u, o);
-    return realFetch(u, o).then(function (r) { return r.json(); }).then(function (j) { // later refreshes keep the touchdown
-      (j || []).forEach(function (m) { if (m.roster_id === 2) bump(m); });
-      return new Response(JSON.stringify(j), { headers: { 'Content-Type': 'application/json' } });
-    });
-  };
-  var td = setInterval(function () {
-    var g = window.__village, L = window.__league, sc = g && g.scene && g.scene.getScene('stadium');
-    if (!sc || !sc.boards || !L || Date.now() < tdAt) return;
-    clearInterval(td);
-    // only as the first impression: not once the visitor is already zooming or walking (it shook the view under them)
-    var lz = sc.logicalZoom(), fz = sc.fitZoom(), D = sc.cameras.main.zoom / lz, snap = Math.max(0.5, Math.round(fz * D * 2)) / (2 * D); // the zoom snaps to whole pixels
-    if (document.hidden || (!sc.spawnOffset && !window.__tv) || (Math.abs(lz - fz) > 0.02 && Math.abs(lz - snap) > 0.02)) return;
-    tdDone = true;
-    var t = (L.teams || []).find(function (x) { return x.roster_id === 2; });
-    if (t) { bump(t, true); sc.refreshScores(); if (window.__hud) window.__hud(); } // the top bar too: score colour, odds, to play
-  }, 250);
-  // sample wording: the top line says it's a demo, the matchup card says the week is made up and shares nothing
-  var words = function () {
-    var lg = document.getElementById('st-league');
-    var hs = document.getElementById('st-score'); if (hs && hs.textContent && !/^DEMO/.test(hs.textContent)) hs.textContent = 'DEMO · ' + hs.textContent; // the folded phone bar shows only this line (round 4)
-    if (lg && /^(Sample|Demo) League/.test(lg.textContent)) lg.textContent = 'Demo league · yours looks like this, live';
-    document.querySelectorAll('.mu-share').forEach(function (b) { if (!b.dataset.demo) { b.dataset.demo = '1'; b.textContent = String.fromCodePoint(0x1F3C8) + ' See YOUR matchup like this'; } });
-    document.querySelectorAll('#panel p.small').forEach(function (q) { if (/points refresh every (minute|\d+ seconds)/.test(q.textContent)) q.textContent = 'A made-up sample week. Your own league updates live every minute during games.'; });
-  };
-  new MutationObserver(words).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
-  document.addEventListener('click', function (e) {
-    var b = e.target && e.target.closest && e.target.closest('#share-btn, .mu-share');
-    if (!b) return;
-    e.stopImmediatePropagation(); e.preventDefault();
-    try { localStorage.removeItem('st-league-id'); } catch (x) {}
-    location.href = location.pathname;
-  }, true);
-  document.addEventListener('DOMContentLoaded', function () {
-    var b = document.getElementById('share-btn');
-    if (b) { b.textContent = String.fromCodePoint(0x1F3C8) + ' Load MY league'; b.setAttribute('aria-label', 'Load my league'); }
-    var st = document.createElement('style'); st.textContent = '#tip-pill{display:none!important}'; document.head.appendChild(st); // no tips on a made-up league; the button needs the room
-  });
-})();
-</script>
-<script>
-(function () {
-  if (!(/[?&](blimp|looks|gold)=/.test(location.search) || window.__pass) || /[?&]sample=1/.test(location.search)) return;
-  document.documentElement.classList.add('pass');
-  var st = document.createElement('style');
-  st.textContent = 'html.pass #tip-pill,html.pass #live-tip,html.pass .tip-a,html.pass #nudge div:has(> .tip-a){display:none!important}'
-    + 'html.pass #st-league::after{content:" · ★ League Pass";color:#b8860b;font-weight:700}';
-  document.head.appendChild(st);
-})();
-</script>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icon-180.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -109,7 +44,7 @@
 <script>
 (function () {
   try {
-    var id = (new URLSearchParams(location.search).get('league') || localStorage.getItem('st-league-id') || '');
+    var id = String(window.__LEAGUE_ID || '');
     if (/^espn-/.test(id)) return;
     id = id.replace(/[^0-9]/g, '');
     if (!id) return;
@@ -126,7 +61,7 @@
     <div id="st-league">Loading the league from Sleeper…</div>
     <div id="st-score"></div>
     <div id="st-proj"></div>
-    <div class="st-btns"><button id="st-mine" type="button">👑 My team</button><button id="st-trade" type="button">🔁 Trade</button><button id="st-news" type="button">📰 News</button><button id="st-table" type="button">🏆 Table</button><button id="st-recap" type="button">📸 Recap</button></div>
+    <div class="st-btns"><button id="st-mine" type="button">👑 My team</button><button id="st-news" type="button">📰 News</button><button id="st-table" type="button">🏆 Table</button><button id="st-recap" type="button">📸 Recap</button></div>
   </div>
   <div id="st-ticker" hidden><span></span></div> 
   <div id="prompt" hidden></div>
@@ -146,41 +81,12 @@
   <script>window.__DPR_MAX = 3; /* every pixel on 3x phones (core.js) */</script>
   <script id="phaser-js" src="vendor/phaser.min.js" async></script> 
   <script type="module" src="js/stadium.bundle.js"></script>
-<button id="share-lg" type="button" hidden aria-label="Share your stadium" title="Share your stadium" style="position:fixed;right:158px;bottom:48px;z-index:50;font:600 13px system-ui,sans-serif;color:#1d140c;background:#ffd84a;border:1px solid #9e7c0c;border-radius:16px;padding:6px 11px;box-shadow:0 2px 6px #0006">&#128279;</button>
-<script>
-(function () {
-  var b = document.getElementById('share-lg'), id = '';
-  try { id = new URLSearchParams(location.search).get('league') || localStorage.getItem('st-league-id') || ''; if (!/^espn-\d+$/.test(id)) id = id.replace(/[^0-9]/g, ''); } catch (e) {}
-  if (!id || /[?&]sample=1/.test(location.search)) return;
-  // Oct 21 2026: the pill stays hidden (the page's own 📸 Share button replaced it); the nudge still uses its link share
-  var q = new URLSearchParams(location.search); q.set('league', id); q.delete('v'); q.delete('notitle');
-  var url = location.origin + location.pathname + '?' + q.toString();  // keeps a League Pass's blimp + looks
-  b.onclick = function () {
-    // Oct 19 2026 commissioner kit: the share carries a ready line for the league chat
-    var msg = 'Our league has a live stadium: scores, TD alerts, the ASS Bowl. Commish, pin this in the league chat!';
-    if (navigator.share) { navigator.share({ title: 'Our league stadium', text: msg, url: url }).catch(function () {}); return; }
-    var done = function () { b.textContent = '\u2705 Link copied'; setTimeout(function () { b.innerHTML = '&#128279;'; }, 2000); };  // Oct 19 2026: one row with Tip + Star, it covered the last matchup
-    if (navigator.clipboard) navigator.clipboard.writeText(msg + ' ' + url).then(done, function () { prompt('Copy this link:', url); });
-    else prompt('Copy this link:', url);
-  };
-})();
-</script>
-<div id="nudge" hidden style="position:fixed;left:50%;bottom:130px;transform:translateX(-50%);z-index:60;width:min(340px,calc(100vw - 32px));background:#fff8e6;color:#1d140c;border:2px solid #9e7c0c;border-radius:14px;padding:12px 14px;box-shadow:0 8px 24px #0008;font:15px system-ui,sans-serif">
-<button id="nudge-x" type="button" aria-label="Close" style="position:absolute;top:4px;right:6px;border:0;background:none;font-size:18px;cursor:pointer">&times;</button>
-<b>Enjoying it?</b> It's free, no ads, made by one person. A GitHub star is how other leagues find it.<br>
-<a class="star-a" href="https://github.com/savilar7-coder/sleeper-stadium" target="_blank" rel="noopener" style="display:block;margin:10px 0 0;padding:10px 12px;border-radius:10px;background:#24292f;color:#fff;text-decoration:none;font-weight:700;font-size:16px;text-align:center">&#11088; Star it on GitHub</a><button id="nudge-share" type="button" style="margin-top:8px;padding:6px 10px;border-radius:10px;border:1px solid #9e7c0c;background:#ffd84a;font-weight:600">&#128279; Share with your league</button>
-<div style="margin-top:8px;font-size:14px">&#127866; <a class="tip-a" href="https://ko-fi.com/lamaisonstudio" target="_blank" rel="noopener" style="font-weight:700;color:#7a4b00">Buy a beer on Ko-fi</a> (Apple Pay, card): your team gets a golden jersey &#127942; &middot; <a class="tip-a" href="https://paypal.me/lamaisonstudio" target="_blank" rel="noopener" style="color:#7a4b00">PayPal</a></div>
-<div class="tip-thanks" hidden style="margin-top:4px;font-size:13px;color:#7a4b00;font-weight:600"></div>
-<div style="margin-top:6px;font-size:13px;color:#5a4a33">Want a custom one for your league? <a class="lp-a" href="https://lamaisonwebstudio.com/stadium/make/" target="_blank" rel="noopener" style="color:#7a4b00;font-weight:700">&#9733; League Pass</a></div>
-</div>
 <div id="tip" hidden style="position:fixed;left:50%;bottom:calc(108px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:60;width:min(320px,calc(100vw - 32px));background:#1d140c;color:#fff4d6;border:2px solid #ffd84a;border-radius:12px;padding:10px 12px;font:14px system-ui,sans-serif;box-shadow:0 6px 18px #0008">
 <b>Tip:</b> &#127941; <b>Awards</b> (top bar) and <b>Matchup &rarr; Share</b> make pictures for your group chat. <button id="tip-x" type="button" style="margin-left:4px;border:0;background:#ffd84a;border-radius:6px;font-weight:700;padding:2px 8px">Got it</button>
 </div>
 <script>
 (function () {
-  var seen = ''; try { seen = localStorage.getItem('st-nudge') || ''; } catch (e) {}
-  if (seen || !/[?&]league=\d/.test(location.search) || /[?&]sample=1/.test(location.search)) return;
-  // the tip: once, a few seconds after the visitor picks their team ("Who are you?")
+  // one-time usage hint, a few seconds after the visitor picks their team ("Who are you?")
   var tipDone = false;
   document.addEventListener('click', function (e) {
     if (tipDone || !e.target.closest || !e.target.closest('.who-btn')) return;
@@ -188,69 +94,6 @@
     try { if (localStorage.getItem('st-tip')) return; localStorage.setItem('st-tip', '1'); } catch (x) {}
     setTimeout(function showTip() { if (window.__bubbleUp()) { setTimeout(showTip, 4000); return; } var t = document.getElementById('tip'); t.hidden = false; var off = function () { t.hidden = true; document.removeEventListener('pointerdown', off, true); }; document.getElementById('tip-x').onclick = off; setTimeout(function () { document.addEventListener('pointerdown', off, true); }, 400); setTimeout(off, 6000); }, 2500);  // Oct 24 2026 (round 57): above Matchup/Share, not on your own row (top of the field on 375x667); any tap or 6 s hides it
   }, true);
-  setTimeout(function show() {
-    if (window.__pass || document.documentElement.classList.contains('pass')) return; // round 64: a paid league never gets the star / "Let's talk" card (Pass perks has Share)
-    var pn = document.getElementById('panel'); if ((pn && !pn.hidden) || window.__bubbleUp()) { setTimeout(show, 5000); return; }  // never on top of a menu or another card
-    var n = document.getElementById('nudge'); n.hidden = false;
-    try { localStorage.setItem('st-nudge', '1'); } catch (e) {}
-    document.getElementById('nudge-x').onclick = function () { n.hidden = true; };
-    document.getElementById('nudge-share').onclick = function () { n.hidden = true; var b = document.getElementById('share-lg'); if (b) b.click(); };
-  }, 30000);
-})();
-</script>
-<a id="tip-pill" href="https://ko-fi.com/lamaisonstudio" target="_blank" rel="noopener" hidden style="position:fixed;right:76px;bottom:48px;z-index:50;font:600 13px system-ui,sans-serif;color:#1d140c;background:#ffd84a;border:1px solid #9e7c0c;border-radius:16px;padding:5px 10px;text-decoration:none;box-shadow:0 2px 6px #0006">&#127866; Tip</a>
-<script>
-(function () {
-  setTimeout(function () { var t = document.getElementById('tip-pill'); if (t) t.hidden = false; }, 8000);
-  var count = function () { try { var day = new Date().toISOString().slice(0, 10); if (localStorage.getItem('ev-demo-tip') !== day) { localStorage.setItem('ev-demo-tip', day); navigator.sendBeacon('https://philosophers-trail.pages.dev/e?k=demo-tip'); } } catch (e) {} };
-  document.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('#tip-pill, .tip-a')) count(); }, true);
-})();
-</script>
-<div id="live-tip" hidden style="position:fixed;left:50%;bottom:156px;transform:translateX(-50%);z-index:60;width:min(340px,calc(100vw - 32px));background:#1d140c;color:#fff4d6;border:2px solid #ffd84a;border-radius:14px;padding:12px 14px;box-shadow:0 8px 24px #0008;font:15px system-ui,sans-serif">
-<button id="live-tip-x" type="button" aria-label="Close" style="position:absolute;top:4px;right:6px;border:0;background:none;color:#fff4d6;font-size:18px;cursor:pointer">&times;</button>
-<b id="live-tip-t">&#127944; A game is live.</b> Sweating it? &#127866; Buy a beer and your team plays in a <b style="color:#ffd84a">golden jersey &#127942;</b> with your trash talk on the blimp. Put your Sleeper league ID + team in the Ko-fi note.
-<div class="tip-thanks" hidden style="margin-top:6px;font-size:13px;color:#ffd84a"></div>
-<a class="tip-a" href="https://ko-fi.com/lamaisonstudio" target="_blank" rel="noopener" style="display:block;margin-top:10px;text-align:center;padding:10px;border-radius:10px;background:#ffd84a;color:#1d140c;font-weight:800;text-decoration:none">&#127866; Buy a beer &middot; Apple Pay or card</a><div style="margin-top:6px;text-align:center;font-size:13px">or <a class="tip-a" href="https://paypal.me/lamaisonstudio" target="_blank" rel="noopener" style="color:#ffd84a">PayPal</a></div>
-</div>
-<script>
-(function () {
-  var test = /[?&]livetest=1/.test(location.search);
-  if (!test && (!/[?&]league=\d/.test(location.search) || /[?&]sample=1/.test(location.search))) return;
-  var day = new Date().toISOString().slice(0, 10), key = 'st-live-tip-' + day;
-  try { if (!test && localStorage.getItem(key)) return; } catch (e) {}
-  var firstVisit = false; try { firstVisit = !localStorage.getItem('st-nudge'); } catch (e) {}  // first visit: the nudge asks this time
-  var live = function (cb) {
-    if (test) return cb('WAS @ SF');
-    var y = new Date().getFullYear();
-    fetch('https://api.sleeper.com/schedule/nfl/regular/' + y).then(function (r) { return r.json(); }).then(function (g) {
-      var on = (g || []).filter(function (x) { return x.status === 'in_game'; });
-      if (on.length) cb(on.length === 1 ? on[0].away + ' @ ' + on[0].home : on.length + ' games');
-    }).catch(function () {});
-  };
-  var shown = false;
-  var fire = function (title) {
-    if (shown) return;
-    var pn = document.getElementById('panel'), n = document.getElementById('nudge');
-    if ((pn && !pn.hidden) || (n && !n.hidden) || window.__bubbleUp()) { setTimeout(function () { fire(title); }, 5000); return; }
-    shown = true;
-    var c = document.getElementById('live-tip');
-    document.getElementById('live-tip-t').innerHTML = title;
-    c.hidden = false;
-    try { localStorage.setItem(key, '1'); } catch (e) {}
-    var close = function () { c.hidden = true; };
-    document.getElementById('live-tip-x').onclick = close;
-    c.addEventListener('click', function (e) { if (e.target.closest('.tip-a')) setTimeout(close, 300); });
-    setTimeout(close, 25000);
-  };
-  // Oct 19 2026: your own touchdown is the best moment to ask (stadium-scene.js sends stadium:mytd)
-  window.addEventListener('stadium:mytd', function (e) {
-    if (firstVisit && !test) return;
-    setTimeout(function () { fire('&#127944; That was YOUR touchdown' + (e.detail && e.detail.who ? ' (' + e.detail.who + ')' : '') + '!'); }, 3600);
-  });
-  setTimeout(function () {
-    if (firstVisit && !test) return;
-    live(function (game) { fire('&#127944; ' + game + ' is live.'); });
-  }, test ? 3000 : 75000);
 })();
 </script>
 <div id="a2hs" hidden style="position:fixed;left:50%;bottom:calc(108px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:60;width:min(320px,calc(100vw - 32px));background:#fff8e6;color:#1d140c;border:2px solid #9e7c0c;border-radius:12px;padding:10px 12px;font:14px system-ui,sans-serif;box-shadow:0 6px 18px #0008">
@@ -258,7 +101,7 @@
 <script>
 (function () {
   var standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
-  if (standalone || !/[?&]league=\d/.test(location.search) || /[?&]sample=1/.test(location.search)) return;
+  if (standalone) return;
   var box = document.getElementById('a2hs'), how = document.getElementById('a2hs-how'), deferred = null;
   var seen = function () { try { return localStorage.getItem('st-a2hs'); } catch (e) { return '1'; } };
   var mark = function () { try { localStorage.setItem('st-a2hs', '1'); } catch (e) {} };
@@ -277,86 +120,6 @@
       var g = document.getElementById('a2hs-go'); if (g) g.onclick = function () { box.hidden = true; deferred.prompt(); }; }, 20000);
   });
   if (/iPhone|iPad/.test(navigator.userAgent)) setTimeout(function () { show('tap Share &#11014;&#65039; then <b>Add to Home Screen</b>.'); }, 20000);
-})();
-(function () {  // honest thank-you line: real tips only (tips.json, updated by hand when a Ko-fi tip arrives)
-  fetch('tips.json', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (t) {
-    var n = (t && t.beers) | 0; if (n < 1) return;
-    document.querySelectorAll('.tip-thanks').forEach(function (d) { d.textContent = '\uD83C\uDF7A ' + n + (n === 1 ? ' beer' : ' beers') + ' so far, thank you!'; d.hidden = false; });
-  }).catch(function () {});
-})();
-</script>
-<script>
-(function () {
-  var fold = function () { var b = document.getElementById('gh-star'); if (b && !b.dataset.pass) { b.innerHTML = '&#11088; Star'; b.style.padding = '5px 9px'; } }; // a Pass league's button stays "Pass perks"
-  var hits = function () { var b = document.getElementById('gh-star'); if (!b) return false; var r = b.getBoundingClientRect();
-    return ['jump-btn', 'share-btn', 'inj-btn'].some(function (id) { var e = document.getElementById(id); if (!e || !e.getClientRects().length) return false; var q = e.getBoundingClientRect();
-      return r.left < q.right && r.right > q.left && r.top < q.bottom && r.bottom > q.top; }); };
-  var check = function () { if (hits()) fold(); };
-  // Oct 24 2026 (round 65, QA cold load: the 300 ms layout check cost ~156 ms during boot): phones fold at once (the long pill
-  // always met Share there), wider screens fold at 8 s; a resize still checks
-  if (innerWidth < 520) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fold); else fold(); } setTimeout(fold, 8000); addEventListener('resize', check);
-})();
-</script>
-<script>
-(function () {
-  var pnl = document.getElementById('panel'); if (!pnl || !window.MutationObserver) return;
-  // round 77 (tester on a laptop): Play closes the Matchup panel; that un-hid Star / Pass perks / Tip (and the footer) inside the drill
-  var sync = function () { var hud = document.getElementById('st-hud'), open = !pnl.hidden || !!(hud && hud.style.display === 'none'); /* the drill hides the top bar at once */ ['gh-star', 'share-lg', 'tip-pill'].forEach(function (id) { var e = document.getElementById(id); if (e) e.style.visibility = open ? 'hidden' : ''; }); };
-  new MutationObserver(sync).observe(pnl, { attributes: true, attributeFilter: ['hidden'] }); sync();
-})();
-</script>
-<a id="gh-star" class="star-a" href="https://github.com/savilar7-coder/sleeper-stadium" target="_blank" rel="noopener" style="position:fixed;right:10px;bottom:48px;z-index:50;font:600 13px system-ui,sans-serif;color:#fff;background:#24292f;border:1px solid #57606a;border-radius:16px;padding:6px 11px;text-decoration:none;box-shadow:0 2px 6px #0006">&#11088; Star on GitHub &middot; free &amp; open source</a>
-<script>
-(function () {
-  var q = location.search; if (!/[?&]league=/.test(q) || /[?&]sample=1/.test(q) || /[?&](blimp|looks|gold)=/.test(q) || window.__pass) return;
-  var st = document.createElement('style'); st.textContent = '#gh-star{display:none!important}#tip-pill{right:10px!important}#share-lg{right:92px!important}@media (max-width:400px){#tip-pill{right:4px!important}}'; document.head.appendChild(st);
-})();
-</script>
-<script>
-(function () {
-  if (!(/[?&](blimp|looks|gold)=/.test(location.search) || window.__pass) || /[?&]sample=1/.test(location.search)) return;
-  var b = document.getElementById('gh-star'); if (!b) return;
-  b.dataset.pass = '1'; b.classList.remove('star-a'); b.removeAttribute('href'); b.removeAttribute('target'); b.setAttribute('role', 'button'); b.tabIndex = 0;
-  b.innerHTML = '&#9733; Pass perks'; b.style.background = '#b8860b'; b.style.borderColor = '#ffd84a'; b.style.color = '#fff8e0'; b.style.cursor = 'pointer';
-  var go = function (e) { e.preventDefault(); if (window.__passPerks) window.__passPerks(); };
-  b.addEventListener('click', go); b.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') go(e); });
-})();
-</script>
-<script>document.addEventListener('click', function (e) { if (!e.target.closest || !e.target.closest('.star-a')) return; try { var day = new Date().toISOString().slice(0, 10); if (localStorage.getItem('ev-demo-star') !== day) { localStorage.setItem('ev-demo-star', day); navigator.sendBeacon('https://philosophers-trail.pages.dev/e?k=demo-star'); } } catch (x) {} }, true);</script>
-<style>@media (min-width: 1280px) { #pass-foot { left: 16px !important; right: auto !important; bottom: 14px !important; height: 26px !important; background: rgba(16,19,24,.88); border: 2px solid #3a3f47; border-radius: 8px; font-size: 13px !important; } } /* round 46: on laptops it floated over the field, on the ASS BOWL sign */</style>
-<div id="pass-foot" style="position:fixed;left:0;right:0;bottom:calc(30px + env(safe-area-inset-bottom));z-index:3;height:18px;display:none;justify-content:center;align-items:center;gap:4px;padding:0 12px;font:11px/18px system-ui,sans-serif;color:#b9b0a0;white-space:nowrap;pointer-events:none"><span style="overflow:hidden;text-overflow:ellipsis;min-width:0">Made for <b id="pass-foot-n" style="color:#fff4d6;font-weight:600"></b></span><span>&middot;</span><a id="pass-foot-a" href="https://lamaisonwebstudio.com/stadium/make/" target="_blank" rel="noopener" style="flex:none;color:#ffd84a;pointer-events:auto;padding:4px 10px 22px;margin:-4px -10px -22px">get one for your league</a></div>
-<style>@media (max-height:500px){#pass-foot{display:none!important}}</style>
-<script>
-(function () {
-  var isPass = /[?&](blimp|looks|gold)=/.test(location.search) || !!window.__pass;
-  if (/[?&]sample=1/.test(location.search)) return;
-  var f = document.getElementById('pass-foot');
-  var wait = isPass && setInterval(function () {
-    var L = window.__league; if (!L || !L.name) return;
-    clearInterval(wait);
-    document.getElementById('pass-foot-n').textContent = L.name;
-    if (!document.body.classList.contains('calm')) { f.style.opacity = '0'; f.style.transition = 'opacity .6s'; setTimeout(function () { f.style.opacity = '1'; }, 50); }
-    if (!document.body.classList.contains('tv')) f.style.display = 'flex'; // TV mode (?tv=1) keeps the screen clean
-    var star = document.getElementById('gh-star'); // the drill and TV mode hide the bottom buttons: the line goes with them
-    if (star) new MutationObserver(function () { f.style.visibility = star.style.visibility; }).observe(star, { attributes: true, attributeFilter: ['style'] });
-  }, 500);
-  // Oct 24 2026 (round 74, Sunday's post has no $5 link): a free league (not the demo, not a Pass) gets the same quiet strip with
-  // "★ Get a League Pass for your league", after 60 s or once a team is picked, and never while a card is up. Taps = demo-passfoot.
-  if (!isPass && /[?&]league=/.test(location.search)) {
-    var t0 = Date.now(), freeWait = setInterval(function () {
-      var L = window.__league; if (!L || !L.name || document.body.classList.contains('tv')) return;
-      var picked = (L.teams || []).some(function (t) { return t.mine; });
-      if ((!picked && Date.now() - t0 < 60000) || (window.__bubbleUp && window.__bubbleUp())) return;
-      clearInterval(freeWait);
-      var fa = document.getElementById('pass-foot-a'); f.firstChild.style.display = 'none'; f.children[1].style.display = 'none';
-      fa.innerHTML = '&#9733; Get a League Pass for your league'; f.style.display = 'flex';
-      var st = document.getElementById('gh-star'); if (st) new MutationObserver(function () { f.style.visibility = st.style.visibility; }).observe(st, { attributes: true, attributeFilter: ['style'] });
-    }, 1000);
-    fa0Count();
-  }
-  function fa0Count() { document.getElementById('pass-foot-a').addEventListener('click', function () { try { var day = new Date().toISOString().slice(0, 10); if (localStorage.getItem('ev-demo-passfoot') !== day) { localStorage.setItem('ev-demo-passfoot', day); navigator.sendBeacon('https://philosophers-trail.pages.dev/e?k=demo-passfoot'); } } catch (x) {} }); }
-  if (!isPass) return;
-  document.getElementById('pass-foot-a').addEventListener('click', function () { try { var day = new Date().toISOString().slice(0, 10); if (localStorage.getItem('ev-demo-passfoot') !== day) { localStorage.setItem('ev-demo-passfoot', day); navigator.sendBeacon('https://philosophers-trail.pages.dev/e?k=demo-passfoot'); } var c = window.__pass && /^P\d{1,3}$/.test(window.__pass.code) && 'lgf-' + window.__pass.code.toLowerCase(); if (c && localStorage.getItem('ev-' + c) !== day) { localStorage.setItem('ev-' + c, day); navigator.sendBeacon('https://philosophers-trail.pages.dev/e?k=' + c); } } catch (x) {} });
 })();
 </script>
 </body>
